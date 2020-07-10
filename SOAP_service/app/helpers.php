@@ -1,15 +1,9 @@
 <?php
+use App\User;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Validator;
 // cada vez que se agregue una funcion al archivo de debe ejecutar
 // composer dump-autoload
-
-if (! function_exists('hello')) {
-    function hello($name = null)
-    {
-        return 'Hello '.$name;
-    }
-}
-
-
 if (! function_exists('myDebug')) {
     function myDebug($input, $rid_content = false)
     {

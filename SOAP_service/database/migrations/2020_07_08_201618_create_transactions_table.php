@@ -15,11 +15,12 @@ class CreateTransactionsTable extends Migration
     {
         Schema::create('transactions', function (Blueprint $table) {
             $table->id();
-            $table->string('type', 10);
-            $table->string('status', 10);
-            $table->integer('confirmation_token');
-            $table->timestamp('expires_at');
-            $table->unsignedBigInteger('user_id');
+            $table->unsignedBigInteger('user_id')->nullable(false);
+            $table->string('type', 10)->nullable(false);
+            $table->string('status', 10)->nullable(false);
+            $table->integer('amount')->nullable(false);
+            $table->integer('confirmation_token')->nullable(false);
+            $table->dateTime('expires_at')->nullable(false);
 
             $table->softDeletes();
             $table->timestamps();

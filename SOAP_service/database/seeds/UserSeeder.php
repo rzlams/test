@@ -22,6 +22,7 @@ class UserSeeder extends Seeder
                 'password' => Hash::make('password'),
                 'documento' => '1234567'.$i,
                 'celular' => '7654321'.$i,
+                'cnofirmed' => 0,
             ]);
         }
     }

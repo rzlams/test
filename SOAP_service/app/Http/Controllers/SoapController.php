@@ -38,7 +38,58 @@ class SoapController extends Controller
         	'Say hello'
     	);
 
-    	hello();
+    	$server->wsdl->addComplexType(
+    		'User',
+    		'complexType',
+    		'struct',
+    		'all',
+    		'',
+    		array(
+        		'name' => array('name' => 'name', 'type' => 'xsd:string'),
+        		'password' => array('name' => 'password', 'type' => 'xsd:string'),
+        		'documento' => array('name' => 'documento', 'type' => 'xsd:string'),
+        		'email' => array('name' => 'email', 'type' => 'xsd:string'),
+        		'celular' => array('name' => 'celular', 'type' => 'xsd:string')
+    		)
+		);
+
+		$server->wsdl->addComplexType(
+    		'Response',
+    		'complexType',
+    		'struct',
+    		'all',
+    		'',
+    		array(
+        		'code' => array('name' => 'code', 'type' => 'xsd:int'),
+        		'message' => array('name' => 'message', 'type' => 'xsd:string')
+    		)
+		);
+
+		$server->wsdl->addComplexType(
+    		'strArray',
+    		'complexType',
+    		'array',
+    		'',
+    		'SOAP-ENC:Array',
+    		array(),
+    		array(
+        		array(
+            		'ref' => 'SOAP-ENC:arrayType',
+            		'wsdl:arrayType' => 'xsd:string[]'
+        		)
+    		),
+    		'xsd:integer'
+		);
+
+    	$server->register('registroCliente',
+        	array('user' => 'tns:User'),
+        	array('return' => 'tns:Response'),
+        	'urn:payco',
+        	'urn:payco#hello',
+        	'rpc',
+        	'encoded',
+        	'Registra un usuario'
+    	);
 
     	$rawPostData = file_get_contents("php://input");
     	return \Response::make($server->service($rawPostData), 200, array('Content-Type' => 'text/xml; charset=ISO-8859-1'));
