@@ -144,4 +144,31 @@ return [
 
     ],
 
+
+
+
+    /* ESTO DEBERIA IR EN SU PROPIO ARCHIVO (enums.php) EN ESTA CARPETA PERO ME DA UN ERROR
+    /*
+    |--------------------------------------------------------------------------
+    | Application Enums
+    |--------------------------------------------------------------------------
+    |
+    | This enums are set for consistency sake.
+    | You can simply call them anywhere in the app just using:
+    | config('enums.transaction_types')
+    |
+    */
+
+    'transaction_types' => [
+        'IN' => 'inflow', // todo lo que entra a la platforma de pago
+        'OUT' => 'outflow', // todo lo que sale de la plataforma de pago
+        'STAY' => 'stay', // transacciones internas en la plataforma de pago
+    ],
+
+    'transaction_status' => [
+        'APROVED' => 'aproved',
+        'PENDING' => 'pending',
+        'DENIED' => 'denied',
+    ],
+
 ];
