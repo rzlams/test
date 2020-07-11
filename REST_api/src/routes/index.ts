@@ -1,18 +1,20 @@
 import express from 'express';
 import {
-  HomeController,
   UserController,
   TransactionController,
 } from '../controllers';
 
 const router = express.Router(); // eslint-disable-line
 
-router.get('/users/:id/edit', UserController.edit);
-router.get('/users/create', UserController.create);
-router.put('/user/update', UserController.update);
-router.get('/users', UserController.index);
-router.post('/users', UserController.store);
-router.get('/users/:id', UserController.show);
-router.delete('/users/:id', UserController.destroy);
+router.get('/users/:id/saldo', UserController.consultaSaldo);
+router.post('/users/login', UserController.login);
+router.post('/users/logout', UserController.logout);
+router.post('/users', UserController.registroCliente);
+
+router.post('/recarga', TransactionController.recargaBilletera);
+router.post('/pago', TransactionController.solicitaPago);
+router.post('/correo-confirmacion', TransactionController.enviaCorreoConfirmacion);
+router.post('/confirma-pago', TransactionController.confirmaPago);
+
 
 export default router;

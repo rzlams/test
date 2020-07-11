@@ -27,6 +27,8 @@ class App {
 
   private loadMiddlewares(): void {
     // this.app.use(logger);
+    this.app.use(express.json());
+    this.app.use(express.urlencoded({ extended: true }));
   }
 
   private loadRoutes(): void {

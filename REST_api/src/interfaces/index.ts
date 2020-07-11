@@ -1,14 +1,17 @@
 export interface User {
-  name: string;
-  documento: string;
-  celular: string;
-  email: string;
+  id?: string;
+  name?: string;
+  documento?: string;
+  celular?: string;
+  email?: string;
   password?: string;
   balance?: number;
 }
 
 export interface Transaction {
-  amount: number;
-  sender_id?: number;
-  receiver_id?: number;
+  id?: string;
+  amount?: number;
+  sender_id?: string;
+  receiver_id?: string;
+  confirmation_token?: string;
 }

@@ -11,22 +11,18 @@ class ConfirmarPago extends Mailable
 {
     use Queueable, SerializesModels;
 
-    private $baseUrl;
     public $tokenConfirmacion;
-    public $tokenSesion;
-    public $transaction_id;
-    public $url;
+    protected $user;
 
     /**
      * Create a new message instance.
      *
      * @return void
      */
-    public function __construct($tokenSesion, $tokenConfirmacion, $transaction_id)
+    public function __construct($user, $tokenConfirmacion)
     {
         $this->tokenConfirmacion = $tokenConfirmacion;
-        $this->baseUrl = env('WSDL_URL', 'http://127.0.0.1/www/laravel_projects/test_payco/SOAP_service/public/soap/payco?wsdl');
-        $this->url = $this->baseUrl . ':4444/soap/confirmar-pago?sessionid=' . $tokenSesion. '&transid=' . $transaction_id;
+        $this->user = $user;
     }
 
     /**
@@ -36,7 +32,8 @@ class ConfirmarPago extends Mailable
      */
     public function build()
     {
-        return $this->from('confirm@payco.co')
-               ->view('confirmarPago');
+        return $this->from('noreply@payco.co')
+               ->view('confirmarPago')
+               ->with(['userName' => $this->user->name ]);
     }
 }

@@ -1,23 +1,29 @@
 import { Request, Response, NextFunction } from "express"; // eslint-disable-line
-import { HttpException } from "../libs/ErrorHandler";
 import SOAP from "../libs/SOAP";
+import { User } from "../interfaces";
 
 
 export class UserController {
-  public index = async (req: Request, res: Response, next: NextFunction) => {
+  public registroCliente = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      SOAP.client({name: 'otrovalue'}, 'hello');
-      res.status(204);
-      //throw new HttpException(500, "Internal server error");
+      const { name, password, documento, email, celular } = req.body;
+      const user: User = { name, password, documento, email, celular };
+
+      SOAP.client(req, res, next, { user }, 'registroCliente');
     } catch (error) {
       next(error);
     }
   };
 
-  public create = async (req: Request, res: Response, next: NextFunction) => { }
-  public store = async (req: Request, res: Response, next: NextFunction) => { }
-  public show = async (req: Request, res: Response, next: NextFunction) => { }
-  public edit = async (req: Request, res: Response, next: NextFunction) => { }
-  public update = async (req: Request, res: Response, next: NextFunction) => { }
-  public destroy = async (req: Request, res: Response, next: NextFunction) => { }
+  public consultaSaldo = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const user: User = { id: req.params.id };
+
+      SOAP.client(req, res, next, { user }, 'consultaSaldo');
+    } catch (error) {
+      next(error);
+    }
+  }
+  public login = async (req: Request, res: Response, next: NextFunction) => { }
+  public logout = async (req: Request, res: Response, next: NextFunction) => { }
 }

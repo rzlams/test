@@ -64,13 +64,12 @@
         </style>
     </head>
     <body>
-    	@component('mail::panel')
-		Codigo de confirmacion
-		{{ $tokenConfirmacion }}
-		@endcomponent
-
-		@component('mail::button', ['url' => $url, 'color' => 'success'])
-			Confirmar Pago
-		@endcomponent
+    		<h3>Hola {{ $userName }},</h3>
+    		<br/>
+		    <hr/>
+		    <br/>
+   		    <br/>
+    		<div>Este es tu codigo de autorizacion<div>
+    		<div>{{ $tokenConfirmacion }}</div>
     </body>
 </html>

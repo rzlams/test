@@ -61,7 +61,7 @@ Route::any('soap/payco', function(Request $request) {
     $server->configureWSDL('wallet.service','urn:payco', Request::url());
 
     $server->wsdl->schemaTargetNamespace = 'urn:payco';
-
+/*
 	$server->wsdl->addComplexType(
     	'User',
     	'complexType',
@@ -76,7 +76,7 @@ Route::any('soap/payco', function(Request $request) {
         	'celular' => array('name' => 'celular', 'type' => 'xsd:string')
     	)
 	);
-
+*/
 	$server->wsdl->addComplexType(
     	'Response',
     	'complexType',
@@ -85,7 +85,8 @@ Route::any('soap/payco', function(Request $request) {
     	'',
     	array(
         	'code' => array('name' => 'code', 'type' => 'xsd:int'),
-        	'message' => array('name' => 'message', 'type' => 'xsd:string')
+        	'message' => array('name' => 'message', 'type' => 'xsd:string'),
+        	'data' => array('name' => 'data', 'type' => 'xsd:string')
     	)
 	);
 
@@ -105,31 +106,21 @@ Route::any('soap/payco', function(Request $request) {
     	'xsd:string'
 	);
 
-    $server->register('hello', // string $name the name of the PHP function, class.method or class..method
+    $server->register('registroCliente', // string $name the name of the PHP function, class.method or class..method
         // array $in assoc array of input values: key = param name, value = param type
-        array('name' => 'xsd:string'),
+        array('user' => 'tns:strArray'),
         // array $out assoc array of output values: key = param name, value = param type
-        array('return' => 'xsd:string'), // response
+        array('return' => 'tns:Response'), // response
         // mixed $namespace the element namespace for the method or false
         'urn:payco',
         // mixed $soapaction the soapaction for the method or false
-        'urn:payco#hello',
+        'urn:payco#registroCliente',
         // mixed $style optional (rpc|document) or false Note: when 'document' is specified,
         // parameter and return wrappers are created for you automatically
         'rpc',
         // mixed $use optional (encoded|literal) or false
         'encoded',
         // string $documentation optional Description to include in WSDL
-        'Say hello'
-    );
-
-    $server->register('registroCliente',
-        array('user' => 'tns:strArray'),
-        array('return' => 'tns:Response'),
-        'urn:payco',
-        'urn:payco#registroCliente',
-        'rpc',
-        'encoded',
         'Registra un nuevo usuario en la plataforma'
     );
 
@@ -153,6 +144,16 @@ Route::any('soap/payco', function(Request $request) {
         'Solicita un pago a otro usuario registrado'
     );
 
+    $server->register('enviaCorreoConfirmacion',
+        array('transaction' => 'tns:strArray'),
+        array('return' => 'tns:Response'),
+        'urn:payco',
+        'urn:payco#enviaCorreoConfirmacion',
+        'rpc',
+        'encoded',
+        'Envia correo para la aprobacion de una transaccion'
+    );
+
     $server->register('confirmaPago',
         array('transaction' => 'tns:strArray'),
         array('return' => 'tns:Response'),
@@ -163,20 +164,15 @@ Route::any('soap/payco', function(Request $request) {
         'Confirma las transacciones con status = pending'
     );
 
-    $server->register('reenvioCorreoConfirmacion',
-        array('transaction' => 'tns:strArray'),
+    $server->register('consultaSaldo',
+        array('user' => 'tns:strArray'),
         array('return' => 'tns:Response'),
         'urn:payco',
-        'urn:payco#reenvioCorreoConfirmacion',
+        'urn:payco#consultaSaldo',
         'rpc',
         'encoded',
-        'Reenvia el correo para la aprobacion de una transaccion'
+        'Calcular y actualiza el balance del usuario'
     );
-
-    function hello($name)
-    {
-        return 'Hello '.$name;
-    }
 
     function registroCliente($user)
     {
@@ -189,8 +185,9 @@ Route::any('soap/payco', function(Request $request) {
         ]);
 
         if($validator->fails()) {
-            $errors = $validator->errors();
-            return array('code' => 400, 'message' => 'Error. Por favor verifique sus datos');
+            $errors = $validator->errors()->toArray();
+            $data = Arr::flatten($errors)[0];
+            return SOAPResponse(400, 'Error. Por favor verifique sus datos', $data);
         }
 
 		try {
@@ -204,10 +201,10 @@ Route::any('soap/payco', function(Request $request) {
 
 			$newUser->save();
 
-			return array( 'code' => 201, 'message' => 'Usuario registrado exitosamente');
+			return SOAPResponse( 201, 'Usuario registrado exitosamente');
 		}
     	catch(\Exception $e) {
-       		return array('code' => 400, 'message' => 'Error al registrar el usuario');
+       		return SOAPResponse(400, 'Error al registrar el usuario');
     	}
     }
 
@@ -234,8 +231,9 @@ Route::any('soap/payco', function(Request $request) {
         ]);
 
         if($validator->fails()) {
-            $errors = $validator->errors();
-            return array('code' => 400, 'message' => 'Error. Por favor verifique sus datos');
+            $errors = $validator->errors()->toArray();
+            $data = Arr::flatten($errors)[0];
+            return SOAPResponse(400, 'Error. Por favor verifique sus datos', $data);
         }
 
 		try {
@@ -244,7 +242,7 @@ Route::any('soap/payco', function(Request $request) {
         				->first();
 
         	if(empty($user)) {
-            	return array('code' => 400, 'message' => 'Error. El usuario no esta registrado');
+            	return SOAPResponse(400, 'Error. El usuario no esta registrado');
         	}
 
         	$newTransaction = new Transaction;
@@ -257,10 +255,10 @@ Route::any('soap/payco', function(Request $request) {
         	$user->balance = $user->balance + $transaction['amount'];
         	$user->update();
 
-			return array( 'code' => 201, 'message' => 'Transaccion registrada exitosamente');
+			return SOAPResponse( 201, 'Transaccion registrada exitosamente');
 		}
     	catch(\Exception $e) {
-       		return array('code' => 400, 'message' => 'Error al registrar la transaccion');
+       		return SOAPResponse(400, 'Error al registrar la transaccion');
     	}
     }
 
@@ -273,8 +271,9 @@ Route::any('soap/payco', function(Request $request) {
         ]);
 
         if($validator->fails()) {
-            $errors = $validator->errors();
-            return array('code' => 400, 'message' => 'Error. Por favor verifique sus datos');
+            $errors = $validator->errors()->toArray();
+            $data = Arr::flatten($errors)[0];
+            return SOAPResponse(400, 'Error. Por favor verifique sus datos', $data);
         }
 
 		try {
@@ -282,7 +281,7 @@ Route::any('soap/payco', function(Request $request) {
         	$user = User::find($user_id);
 			// Verifico que el sender tenga saldo suficiente para el pago solicitado
             if($user->balance < $transaction['amount']) {
-                return array('code' => 400, 'message' => 'Saldo insuficiente');
+                return SOAPResponse(400, 'Saldo insuficiente. Intente un monto menor');
             }
 
         	$newTransaction = new Transaction;
@@ -294,44 +293,117 @@ Route::any('soap/payco', function(Request $request) {
 
         	$newTransaction->save();
 
-        	enviaCorreoConfirmacion($user, $newTransaction->id);
-
-        	return array(
-			    'code' => 201,
-			    'message' => 'Transaccion pendiente. Le enviamos un correo para la aprobacion'
-			);
+        	return SOAPResponse(201, 'Transaccion procesada. Pendiente por aprobacion');
 		}
     	catch(\Exception $e) {
-       		return array('code' => 400, 'message' => 'Error al registrar la transaccion');
+       		return SOAPResponse(400, 'Error al registrar la transaccion');
     	}
     }
 
-    function confirmaPago()
+    function confirmaPago($transaction)
     {
+        try
+		{
+        // valido el JWT
+        // valido el token de confirmacion
+        myDebug(Carbon::now()->addMinutes(2));
 
-        /*
-        enviar correo con un boton para confirmar operacion
-        el url del correo incluye el jwt, con eso se valida que este logueado el usuario
-        y te manda a una vista donde debes meter el token de 6 numeros para confirmar el pago (cae en este metodo)
+        	$transaction = Transaction::where('id', $transaction['id'])
+        			->where('confirmation_token', $transaction['confirmation_token'])
+        			->where('status', config('database.transaction_status.PENDING'))
+        			->first();
 
-        el token de confirmacion tiene un tiempo de expiracion que voy a setear en config/app.php (30 minutos)
-        si vence hay que darle al usuario la oportunidad de recibir un nuevo correo con un nuevo token
-        con el $transaction_id que estan en el correo se puede generar el nuevo correo
-        el JWT sirve para manetener la sesion, si expira el usuario se debe autenticar otra vez
-        */
+        	if(empty($transaction)) {
+            	return SOAPResponse(400, 'Error. No existe una transaccion por aprobar con los datos que ingreso');
+        	}
 
-        // verifico si el token de confirmacion sigue vigente
-        // if(Carbon::parse($date)->lt(Carbon::now())) {}
+        	if(Carbon::parse($transaction->expires_at)->lt(Carbon::now())) {
+          	return SOAPResponse(400, 'Error. Expiro el token de confirmacion');
+        	}
+
+        	$sender = User::find($transaction->sender_id);
+        	$sender->balance = $sender->balance - $transaction->amount;
+        	$sender->update();
+
+        	$receiver = User::find($transaction->receiver_id);
+        	$receiver->balance = $receiver->balance + $transaction->amount;
+        	$receiver->update();
+
+        	$transaction->status = config('database.transaction_status.APROVED');
+        	$transaction->update();
+
+        	return SOAPResponse(200, 'Transaccion aprobada exitosamente');
+        }
+    	catch(\Exception $e) {
+       		return SOAPResponse(400, 'Error al registrar la transaccion');
+    	}
     }
 
-    function reenvioCorreoConfirmacion($transaction)
+    function consultaSaldo($user)
     {
-        // $transaction trae el sender_id y el transaction_id que estaban en el correo original
-        // con esos datos se buscan el usuario y la transaccion para genera un nuevo correo
-        // enviaCorreoConfirmacion($user, $transaction_id);
+        // trae todas las transacciones en las que participo este user con status = aproved
+        // en las que es sender le restan y en las que es receiver le suman
+        // acualiza el balance en User
+        try
+		{
+        	$validator = Validator::make($user, [
+                'id' => 'required|exists:users,id',
+        	]);
+
+        	if($validator->fails()) {
+            	$errors = $validator->errors()->toArray();
+	            $data = Arr::flatten($errors)[0];
+            	return SOAPResponse(400, 'Error. Por favor verifique sus datos', $data);
+        	}
+
+        	$transaction = Transaction::where('status', config('database.transaction_status.APROVED'))
+        					->where('sender_id', $user['id'])
+        					->orWhere('receiver_id', $user['id'])
+        					->get();
+        	myDebug($transaction, true);
+
+        	return SOAPResponse(200, 'Consulta de saldo exitosa');
+		}
+    	catch(\Exception $e) {
+    		return SOAPResponse(400, 'Error al consultar saldo');
+    	}
     }
 
-    function generaTokenConfirmacion($n)
+	function enviaCorreoConfirmacion($transaction)
+	{
+		try
+		{
+        	$confirmation_token = generaTokenConfirmacion(6);
+	    	$expires_at = Carbon::now()->addMinutes(2);
+
+	    	// $user_id = sale del jwt
+	    	$user = User::find(1); // $user_id
+	    	$userEmail = $user->email;
+
+	    	$transaction = Transaction::where('id', $transaction['id'])
+	    			->where('status', config('database.transaction_status.PENDING'))
+	    			->first();
+
+	    	if(empty($transaction)) {
+	    		return SOAPResponse(400, 'Error. La transaccion no tiene status pendiente');
+	    	}
+
+	    	$transaction->confirmation_token = $confirmation_token;
+    		$transaction->expires_at = $expires_at;
+	    	$transaction->update();
+
+
+        	Mail::to($userEmail)
+            	->send(new ConfirmarPago($user, $confirmation_token));
+
+        	return SOAPResponse(200, 'Correo de confirmacion enviado exitosamente');
+		}
+    	catch(\Exception $e) {
+       		return SOAPResponse(400, 'Error al registrar la transaccion');
+    	}
+	}
+
+	function generaTokenConfirmacion($n)
     {
     	$characters = '0123456789';
     	$randomString = '';
@@ -344,20 +416,8 @@ Route::any('soap/payco', function(Request $request) {
     	return (int) $randomString;
 	}
 
-	function enviaCorreoConfirmacion($user, $transaction_id)
-	{
-	    $senderEmail = $user->email; // el usuario que debe aprobar
-        $tokenSesion = 'JWT'; // de la sesion actual
-        $confirmation_token = generaTokenConfirmacion(6);
-	    $expires_at = Carbon::now()->addMinutes(30);
-	    Transaction::where('id', $transaction_id)
-	    		->update([
-	    			'confirmation_token' => $confirmation_token,
-	    			'expires_at' => $expires_at,
-	    		]);
-
-        // Mail::to($senderEmail)
-            // ->send(new ConfirmarPago($tokenSesion, $tokenConfirmacion, $transaction_id));
+	function SOAPResponse($code, $message, $data = '') {
+		return array('code' => $code, 'message' => $message, 'data' => $data);
 	}
 
     $rawPostData = file_get_contents("php://input");
