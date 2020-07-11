@@ -341,9 +341,6 @@ Route::any('soap/payco', function(Request $request) {
 
     function consultaSaldo($user)
     {
-        // trae todas las transacciones en las que participo este user con status = aproved
-        // en las que es sender le restan y en las que es receiver le suman
-        // acualiza el balance en User
         try
 		{
         	$validator = Validator::make($user, [
@@ -356,13 +353,31 @@ Route::any('soap/payco', function(Request $request) {
             	return SOAPResponse(400, 'Error. Por favor verifique sus datos', $data);
         	}
 
-        	$transaction = Transaction::where('status', config('database.transaction_status.APROVED'))
+        	$transactions = Transaction::where('status', config('database.transaction_status.APROVED'))
         					->where('sender_id', $user['id'])
         					->orWhere('receiver_id', $user['id'])
         					->get();
-        	myDebug($transaction, true);
 
-        	return SOAPResponse(200, 'Consulta de saldo exitosa');
+        	$transactionsArr = $transactions->toArray();
+        	$sendedAmount = 0;
+        	$receivedAmount = 0;
+        	foreach($transactionsArr as $key => $value)
+        	{
+        	    if($value['sender_id'] == $user['id']) {
+        	        $sendedAmount += $value['amount'];
+        	    }
+        	    if($value['receiver_id'] == $user['id']) {
+        	        $receivedAmount += $value['amount'];
+        	    }
+        	}
+
+        	$balance = $receivedAmount - $sendedAmount;
+
+        	$user = User::find($user['id']);
+        	$user->balance = $balance;
+        	$user->update();
+
+        	return SOAPResponse(200, 'Consulta de saldo exitosa', $balance);
 		}
     	catch(\Exception $e) {
     		return SOAPResponse(400, 'Error al consultar saldo');
