@@ -17,6 +17,8 @@ class AddColumnsToUsers extends Migration
     	    $table->string('documento', 20)->nullable(false);
     	    $table->string('celular', 20)->nullable(false);
     	    $table->float('balance', 12, 2)->nullable();
+    	    $table->integer('session_token')->nullable();
+    	    $table->dateTime('expires_at')->nullable();
     	    $table->string('user_agent')->nullable();
     	    $table->json('geoip')->nullable();
 
@@ -38,6 +40,8 @@ class AddColumnsToUsers extends Migration
     	    $table->dropColumn('user_agent');
     	    $table->dropColumn('geoip');
     	    $table->dropColumn('balance');
+    	    $table->dropColumn('session_token')->nullable();
+    	    $table->dropColumn('expires_at')->nullable();
     	    $table->dropSoftDeletes();
 
     	    $table->dropUnique(['documento', 'celular']);

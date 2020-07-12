@@ -24,6 +24,25 @@ export class UserController {
       next(error);
     }
   }
-  public login = async (req: Request, res: Response, next: NextFunction) => { }
-  public logout = async (req: Request, res: Response, next: NextFunction) => { }
+
+  public login = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { documento, password } = req.body;
+      const user: User = { documento, password };
+
+      SOAP.client(req, res, next, { user }, 'login');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  public logout = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const user: User = { session_token: req.body.session_token };
+
+      SOAP.client(req, res, next, { user }, 'logout');
+    } catch (error) {
+      next(error);
+    }
+  }
 }

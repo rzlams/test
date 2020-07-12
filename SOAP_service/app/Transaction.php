@@ -10,10 +10,13 @@ class Transaction extends Model
     use SoftDeletes;
 
     /**
-     * @return belongsTo
-     */
+     * @return belongsToMany
+
     public function users()
     {
-        return $this->belongsTo('App\User');
+        return $this->belongsToMany('App\User', 'transaction_user', 'transaction_id', 'sender_id')
+        			->withPivot('receiver_id')
+        			->withTimestamps();
     }
+    */
 }

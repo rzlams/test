@@ -6,6 +6,7 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Validator;
 use App\Mail\ConfirmarPago;
 use Carbon\Carbon;
+use Tymon\JWTAuth\Facades\JWTAuth;
 
 
 /*
@@ -124,6 +125,26 @@ Route::any('soap/payco', function(Request $request) {
         'Registra un nuevo usuario en la plataforma'
     );
 
+    $server->register('login',
+        array('credentials' => 'tns:strArray'),
+        array('return' => 'tns:Response'),
+        'urn:payco',
+        'urn:payco#login',
+        'rpc',
+        'encoded',
+        'Inicia sesion y crea session_token'
+    );
+
+    $server->register('logout',
+        array('user' => 'tns:strArray'),
+        array('return' => 'tns:Response'),
+        'urn:payco',
+        'urn:payco#logout',
+        'rpc',
+        'encoded',
+        'Cierra sesion e invalida session_token'
+    );
+
     $server->register('recargaBilletera',
         array('transaction' => 'tns:strArray'),
         array('return' => 'tns:Response'),
@@ -208,19 +229,59 @@ Route::any('soap/payco', function(Request $request) {
     	}
     }
 
-    // CASO 1: recargar billetera  -  type = IN  -  status = aproved (inmediatamente)
-    // solo se graba un registro con user_action = receive
+    function login($credentials)
+    {
+        $validator = Validator::make($credentials, [
+            'password' => 'required|min:6|max:32',
+            'documento' => 'required|max:20',
+        ]);
 
-    // CASO 2: retirar saldo de billetera  -  type = OUT  -  status = aproved (inmediatamente)
-    // solo se graba un registro con user_action = send
+        if($validator->fails()) {
+            $errors = $validator->errors()->toArray();
+            $data = Arr::flatten($errors)[0];
+            return SOAPResponse(400, 'Error. Por favor verifique sus datos', $data);
+        }
 
-    // CASO 3: enviar pago  -  type = STAY  -  status = aproved (inmediatamente)
-    // se graban dos registros, uno con user_action = send y otro con user_action = receive
+		try {
+            $user = User::where('documento', $credentials['documento'])->first();
 
-    // CASO 4: solicitar pago  -  type = STAY  -  status = pending (hasta que el sender apruebe)
-    // se graban dos registros, uno con user_action = send y otro con user_action = receive
-    // la diferencia en este caso es el status = pending que el usuario con user_action = send
-    // es el unico que puede cambiar a status = aproved o status = denied
+            if (Hash::check($credentials['password'], $user->password)) {
+                // Tuve problemas para implementar la libreria de JWT asi que
+                // para poder cumplir con el plazo de entrega
+                // solo genero el jwt y lo controlo como el confirmation_token sin refresh token
+                // JWTAuth::attempt($credentials);
+                $session_token = generaToken(8);
+                $expires_at = Carbon::now()->addMinutes(10);
+                $user->expires_at = $expires_at;
+                $user->session_token = $session_token;
+                $user->update();
+
+				return SOAPResponse(200, 'Login exitoso', $session_token);
+            }
+
+            return SOAPResponse( 400, 'Error. Credenciales incorrectas');
+		}
+    	catch(\Exception $e) {
+       		return SOAPResponse(400, 'Error al autenticar usuario');
+    	}
+    }
+
+    function logout($user)
+    {
+		try {
+			// JWTAuth::refresh($jwt);
+			// JWTAuth::parseToken($jwt);
+			// $jwt = JWTAuth::invalidate($user['jwt']);
+			$user = User::where('session_token', $user['session_token'])->first();
+			$user->expires_at = Carbon::now();
+			$user->update();
+
+			return SOAPResponse(200, 'Sesion finalizada');
+		}
+    	catch(\Exception $e) {
+       		return SOAPResponse(400, 'Error al cerrar sesion');
+    	}
+    }
 
     function recargaBilletera($transaction)
     {
@@ -304,10 +365,6 @@ Route::any('soap/payco', function(Request $request) {
     {
         try
 		{
-        // valido el JWT
-        // valido el token de confirmacion
-        myDebug(Carbon::now()->addMinutes(2));
-
         	$transaction = Transaction::where('id', $transaction['id'])
         			->where('confirmation_token', $transaction['confirmation_token'])
         			->where('status', config('database.transaction_status.PENDING'))
@@ -316,12 +373,18 @@ Route::any('soap/payco', function(Request $request) {
         	if(empty($transaction)) {
             	return SOAPResponse(400, 'Error. No existe una transaccion por aprobar con los datos que ingreso');
         	}
-
+/*
         	if(Carbon::parse($transaction->expires_at)->lt(Carbon::now())) {
-          	return SOAPResponse(400, 'Error. Expiro el token de confirmacion');
+          		return SOAPResponse(400, 'Error. Expiro el token de confirmacion');
         	}
-
-        	$sender = User::find($transaction->sender_id);
+*/
+        	$sender = User::where('session_token', $transaction->session_token)->first();
+myDebug($sender, true);
+/*
+        	if(Carbon::parse($sender->expires_at)->lt(Carbon::now())) {
+          		return SOAPResponse(400, 'Error. Expiro el token de sesion');
+        	}
+*/
         	$sender->balance = $sender->balance - $transaction->amount;
         	$sender->update();
 
@@ -388,12 +451,11 @@ Route::any('soap/payco', function(Request $request) {
 	{
 		try
 		{
-        	$confirmation_token = generaTokenConfirmacion(6);
-	    	$expires_at = Carbon::now()->addMinutes(2);
+	    	$user = User::where('session_token', $transaction['session_token'])->first();
 
-	    	// $user_id = sale del jwt
-	    	$user = User::find(1); // $user_id
-	    	$userEmail = $user->email;
+	    	if(Carbon::parse($user->expires_at)->lt(Carbon::now())) {
+          		return SOAPResponse(400, 'Error. Expiro el token de sesion');
+        	}
 
 	    	$transaction = Transaction::where('id', $transaction['id'])
 	    			->where('status', config('database.transaction_status.PENDING'))
@@ -403,12 +465,13 @@ Route::any('soap/payco', function(Request $request) {
 	    		return SOAPResponse(400, 'Error. La transaccion no tiene status pendiente');
 	    	}
 
+	    	$confirmation_token = generaToken(6);
+	    	$expires_at = Carbon::now()->addMinutes(2);
 	    	$transaction->confirmation_token = $confirmation_token;
     		$transaction->expires_at = $expires_at;
 	    	$transaction->update();
 
-
-        	Mail::to($userEmail)
+        	Mail::to($user->email)
             	->send(new ConfirmarPago($user, $confirmation_token));
 
         	return SOAPResponse(200, 'Correo de confirmacion enviado exitosamente');
@@ -418,7 +481,7 @@ Route::any('soap/payco', function(Request $request) {
     	}
 	}
 
-	function generaTokenConfirmacion($n)
+	function generaToken($n)
     {
     	$characters = '0123456789';
     	$randomString = '';
@@ -431,7 +494,8 @@ Route::any('soap/payco', function(Request $request) {
     	return (int) $randomString;
 	}
 
-	function SOAPResponse($code, $message, $data = '') {
+	function SOAPResponse($code, $message, $data = '')
+	{
 		return array('code' => $code, 'message' => $message, 'data' => $data);
 	}
 
@@ -439,3 +503,17 @@ Route::any('soap/payco', function(Request $request) {
     return \Response::make($server->service($rawPostData), 200, array('Content-Type' => 'text/xml; charset=ISO-8859-1'));
 
 });
+
+    // CASO 1: recargar billetera  -  type = IN  -  status = aproved (inmediatamente)
+    // solo se graba un registro con user_action = receive
+
+    // CASO 2: retirar saldo de billetera  -  type = OUT  -  status = aproved (inmediatamente)
+    // solo se graba un registro con user_action = send
+
+    // CASO 3: enviar pago  -  type = STAY  -  status = aproved (inmediatamente)
+    // se graban dos registros, uno con user_action = send y otro con user_action = receive
+
+    // CASO 4: solicitar pago  -  type = STAY  -  status = pending (hasta que el sender apruebe)
+    // se graban dos registros, uno con user_action = send y otro con user_action = receive
+    // la diferencia en este caso es el status = pending que el usuario con user_action = send
+    // es el unico que puede cambiar a status = aproved o status = denied

@@ -6,6 +6,8 @@ export interface User {
   email?: string;
   password?: string;
   balance?: number;
+  confirmation_token?: string;
+  session_token?: string;
 }
 
 export interface Transaction {
@@ -13,5 +15,4 @@ export interface Transaction {
   amount?: number;
   sender_id?: string;
   receiver_id?: string;
-  confirmation_token?: string;
 }

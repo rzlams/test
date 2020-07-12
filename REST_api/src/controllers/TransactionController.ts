@@ -34,10 +34,8 @@ export class TransactionController {
 
   public enviaCorreoConfirmacion = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const jwt = { jwt: 'bearer' }; // req.header('bearer')
-      // agregar al cliente SOAP el codigo para enviar el jwt por un header
-      // o ver como la libreria de laravel lo puede sacar del body de la request
-      const transaction: Transaction = { id: req.body.transactionId };
+      const { transaction_id, session_token } = req.body;
+      const transaction: any = { id: transaction_id, session_token };
 
       SOAP.client(req, res, next, { transaction }, 'enviaCorreoConfirmacion')
         .then((result: any) => {
@@ -50,11 +48,12 @@ export class TransactionController {
 
   public confirmaPago = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const jwt = { jwt: 'bearer' }; // req.header('bearer')
-      // agregar al cliente SOAP el codigo para enviar el jwt por un header
-      // o ver como la libreria de laravel lo puede sacar del body de la request
-      const { transactionId, confirmation_token } = req.body;
-      const transaction: Transaction = { id: transactionId, confirmation_token };
+      const { transaction_id, confirmation_token, session_token } = req.body;
+      const transaction: any = {
+        id: transaction_id,
+        confirmation_token,
+        session_token
+      };
 
       SOAP.client(req, res, next, { transaction }, 'confirmaPago')
         .then((result: any) => {
