@@ -146,7 +146,7 @@ Route::any('soap/payco', function(Request $request) {
         'urn:payco#confirmaPago',
         'rpc',
         'encoded',
-        'Confirma las transacciones con status = pending'
+        'Aprueba la transaccion indicada'
     );
 
     $server->register('consultaSaldo',
@@ -156,7 +156,7 @@ Route::any('soap/payco', function(Request $request) {
         'urn:payco#consultaSaldo',
         'rpc',
         'encoded',
-        'Calcular y actualiza el balance del usuario'
+        'Calcula y actualiza el balance del usuario'
     );
 
     $server->register('listarTransaccionesPendientes',
