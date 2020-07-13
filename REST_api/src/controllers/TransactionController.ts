@@ -1,6 +1,5 @@
 import { Request, Response, NextFunction } from "express"; // eslint-disable-line
 import SOAP from "../libs/SOAP";
-import { Transaction } from "../interfaces";
 
 export class TransactionController {
 
@@ -20,8 +19,8 @@ export class TransactionController {
 
   public solicitaPago = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { sender_id, receiver_id, amount } = req.body;
-      const transaction: Transaction = { sender_id, receiver_id, amount };
+      const { sender_id, session_token, amount } = req.body;
+      const transaction: any = { sender_id, session_token, amount };
 
       SOAP.client(req, res, next, { transaction }, 'solicitaPago')
         .then((result: any) => {
@@ -56,6 +55,19 @@ export class TransactionController {
       };
 
       SOAP.client(req, res, next, { transaction }, 'confirmaPago')
+        .then((result: any) => {
+          console.log(result);
+        });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  public listarTransaccionesPendientes = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const transaction: any = { session_token: req.body.session_token };
+
+      SOAP.client(req, res, next, { transaction }, 'listarTransaccionesPendientes')
         .then((result: any) => {
           console.log(result);
         });

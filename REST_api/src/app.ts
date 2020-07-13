@@ -1,4 +1,5 @@
 import * as dotenv from "dotenv";
+import cors from "cors";
 import path from "path";
 import express, {
   Application,
@@ -13,11 +14,13 @@ import { errorHandler } from "./libs/ErrorHandler";
 
 class App {
   private dotenv: any;
+  private cors: any;
   private app: Application;
   private port: string | number;
 
   constructor() {
     this.dotenv = dotenv.config();
+    this.cors = cors({ origin: 'http://127.0.0.1/' });
     this.port = process.env.PORT || 4444;
     this.app = express();
     this.loadMiddlewares();
@@ -27,6 +30,7 @@ class App {
 
   private loadMiddlewares(): void {
     // this.app.use(logger);
+    // this.app.use(cors);
     this.app.use(express.json());
     this.app.use(express.urlencoded({ extended: true }));
   }
